@@ -141,7 +141,7 @@ final result = await model.run(XybridEnvelope.text('Hello world'));
 
 ```gradle
 dependencies {
-    implementation("ai.xybrid:xybrid-kotlin:0.1.0-beta12")
+    implementation("ai.xybrid:xybrid-kotlin:0.1.0-rc1")
 }
 ```
 
@@ -159,7 +159,7 @@ val result = model.run(Envelope.text("Hello world"))
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/xybrid-ai/xybrid.git", exact: "0.1.0-beta13")
+    .package(url: "https://github.com/xybrid-ai/xybrid.git", exact: "0.1.0-rc1")
 ]
 ```
 
