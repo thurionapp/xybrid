@@ -9777,6 +9777,7 @@ dependencies = [
  "oslog",
  "tokio",
  "tokio-stream",
+ "url",
  "xybrid-core",
  "xybrid-sdk",
 ]
