@@ -793,6 +793,89 @@ public sealed class InferenceResult : IDisposable
 public enum OutputType { Text, Audio, Embedding, Unknown }
 ```
 
+### InferenceMetrics
+
+Typed inference metrics surfaced on every `XybridResult`. LLM-specific fields
+(`ttftMs`, `tokensPerSecond`, `prefillTps`, `decodeTps`, `tokensOut`) are
+`null` when the model is ASR/TTS/embedding. `stageLatenciesMs` is empty for
+`model.run()` and populated for `pipeline.run()`.
+
+Population is best-effort: fields are parsed from the `Envelope.metadata`
+string map written by `runtime_adapter::llm` and `execution::executor`.
+Local LLM runs populate the LLM scalars; **cloud LLM runs currently surface
+only `totalMs`** (the cloud adapter writes `backend` to envelope metadata
+but not per-run scalars — those ride on span metadata today). Unparseable
+values become `null`. Input-token counts (`promptTokens` / `tokensIn`) are
+not on this surface yet — they exist as span metadata only and will be
+added once an adapter writes the key to the envelope.
+
+```dart
+class XybridInferenceMetrics {
+  final int totalMs;
+  final int? ttftMs;
+  final double? tokensPerSecond;
+  final double? prefillTps;
+  final double? decodeTps;
+  final int? tokensOut;
+  final List<XybridStageLatency> stageLatenciesMs;
+}
+
+class XybridStageLatency {
+  final String stageId;
+  final int latencyMs;
+}
+```
+
+```kotlin
+data class XybridInferenceMetrics(
+  val totalMs: Int,
+  val ttftMs: Int?,
+  val tokensPerSecond: Double?,
+  val prefillTps: Double?,
+  val decodeTps: Double?,
+  val tokensOut: Int?,
+  val stageLatenciesMs: List<XybridStageLatency>
+)
+
+data class XybridStageLatency(val stageId: String, val latencyMs: Int)
+```
+
+```swift
+public struct XybridInferenceMetrics {
+  public let totalMs: Int
+  public let ttftMs: Int?
+  public let tokensPerSecond: Double?
+  public let prefillTps: Double?
+  public let decodeTps: Double?
+  public let tokensOut: Int?
+  public let stageLatenciesMs: [XybridStageLatency]
+}
+
+public struct XybridStageLatency {
+  public let stageId: String
+  public let latencyMs: Int
+}
+```
+
+```csharp
+public sealed class InferenceMetrics
+{
+  public uint TotalMs { get; }
+  public uint? TtftMs { get; }
+  public float? TokensPerSecond { get; }
+  public float? PrefillTps { get; }
+  public float? DecodeTps { get; }
+  public uint? TokensOut { get; }
+  public IReadOnlyList<StageLatency> StageLatenciesMs { get; }
+}
+
+public sealed class StageLatency
+{
+  public string StageId { get; }
+  public uint LatencyMs { get; }
+}
+```
+
 ### Implementation Status
 
 | Property | Dart | Kotlin | Swift | C# |
@@ -807,6 +890,10 @@ public enum OutputType { Text, Audio, Embedding, Unknown }
 | `modelId` | — | — | — | ✅ |
 | `isFailure` | ✅ | ✅ | ✅ | ✅ |
 | `audioAsWav()` | ✅ | — | — | — |
+| `metrics` | — | — | — | — |
+| `metrics.ttftMs` | — | — | — | — |
+| `metrics.tokensPerSecond` | — | — | — | — |
+| `metrics.stageLatenciesMs` | — | — | — | — |
 
 ---
 
