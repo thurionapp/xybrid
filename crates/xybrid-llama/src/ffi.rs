@@ -215,6 +215,41 @@ pub(crate) unsafe fn n_vocab(model: *const c_void) -> i32 {
     sys::llama_n_vocab_c(model)
 }
 
+/// Embedding dimensionality (`n_embd`) for `model`.
+///
+/// # Safety: `model` must be a live, non-null model pointer.
+pub(crate) unsafe fn model_n_embd(model: *const c_void) -> i32 {
+    sys::llama_model_n_embd_c(model)
+}
+
+/// Compute one pooled embedding vector for `tokens` into `out`.
+///
+/// The shim builds its own embedding-mode context internally, so no
+/// caller-owned context is required. Returns 0 on success, negative on error.
+///
+/// # Safety
+///
+/// `model` must be a live, non-null model pointer. `tokens` valid for
+/// `n_tokens` elements. `out` writable for `out_len` `f32` elements, with
+/// `out_len >= model_n_embd(model)`.
+pub(crate) unsafe fn embed(
+    model: *const c_void,
+    tokens: *const i32,
+    n_tokens: usize,
+    out: *mut f32,
+    out_len: usize,
+    pooling_type: i32,
+) -> c_int {
+    sys::llama_embed_c(
+        model,
+        tokens,
+        n_tokens.min(c_int::MAX as usize) as c_int,
+        out,
+        out_len.min(c_int::MAX as usize) as c_int,
+        pooling_type as c_int,
+    )
+}
+
 /// # Safety: `ctx` must be a live, non-null context pointer.
 pub(crate) unsafe fn n_ctx(ctx: *const c_void) -> i32 {
     sys::llama_n_ctx_c(ctx)

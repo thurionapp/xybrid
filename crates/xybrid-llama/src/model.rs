@@ -174,6 +174,65 @@ impl LlamaModel {
         unsafe { ffi::n_vocab(self.ptr) as usize }
     }
 
+    /// Embedding dimensionality (`n_embd`) — the length of every vector
+    /// produced by [`Self::embed`].
+    pub fn n_embd(&self) -> usize {
+        // SAFETY: self.ptr is a live model pointer.
+        let n = unsafe { ffi::model_n_embd(self.ptr) };
+        if n < 0 {
+            0
+        } else {
+            n as usize
+        }
+    }
+
+    /// Compute a single pooled embedding vector for `text`.
+    ///
+    /// Tokenizes `text` (with BOS, matching the convention embedding models
+    /// expect) and runs it through an internally-created embedding-mode
+    /// context. `pooling` selects the strategy: `1` MEAN (default), `2` CLS,
+    /// `3` LAST; any other value falls back to MEAN. The returned vector has
+    /// length [`Self::n_embd`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LlamaError::Internal`] if `n_embd` is unavailable or the C
+    /// shim fails to build a context / decode / read the embedding, and
+    /// propagates tokenization failures.
+    pub fn embed(&self, text: &str, pooling: i32) -> LlamaResult<Vec<f32>> {
+        let n_embd = self.n_embd();
+        if n_embd == 0 {
+            return Err(LlamaError::Internal(
+                "model reports n_embd=0; not an embedding-capable model".to_string(),
+            ));
+        }
+
+        let tokens = self.tokenize(text, true)?;
+        if tokens.is_empty() {
+            return Ok(vec![0.0; n_embd]);
+        }
+
+        let mut out = vec![0.0f32; n_embd];
+        // SAFETY: self.ptr is a live model pointer; `tokens` is valid for its
+        // length; `out` is writable for `n_embd` f32 elements (== out.len()).
+        let rc = unsafe {
+            ffi::embed(
+                self.ptr,
+                tokens.as_ptr(),
+                tokens.len(),
+                out.as_mut_ptr(),
+                out.len(),
+                pooling,
+            )
+        };
+        if rc != 0 {
+            return Err(LlamaError::Internal(format!(
+                "llama_embed_c failed (code {rc})"
+            )));
+        }
+        Ok(out)
+    }
+
     /// Returns `true` for fully recurrent architectures (Mamba, RWKV).
     /// Most callers want [`Self::has_recurrent_state`] instead — it
     /// additionally covers hybrid models (LFM2, Qwen35, Granite-hybrid,
@@ -249,6 +308,10 @@ impl Drop for LlamaModel {
 //   - llama_n_vocab_c               : read-only
 //   - llama_model_is_recurrent_c    : read-only
 //   - llama_model_has_recurrent_state_c : read-only
+//   - llama_model_n_embd_c          : read-only
+//   - llama_embed_c                 : read-only over model weights; builds
+//                                     and frees its OWN context internally,
+//                                     never mutates the model handle
 //   - llama_format_chat_with_model_c    : read-only over model template;
 //                                         writes to caller's out-buffer
 //

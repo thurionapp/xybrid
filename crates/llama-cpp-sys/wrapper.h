@@ -113,6 +113,18 @@ bool llama_model_has_recurrent_state_c(const XYBRID_LLAMA_MODEL* model);
 int   llama_decode_c(XYBRID_LLAMA_CONTEXT* ctx, const llama_batch* batch);
 float* llama_get_logits_c(XYBRID_LLAMA_CONTEXT* ctx);
 
+/* Embeddings: n_embd query + self-contained single-sequence pooled embed.
+   pooling_type: 1=MEAN, 2=CLS, 3=LAST (anything else => MEAN). The embed call
+   builds its own embedding-mode context internally. Returns 0 on success. */
+int llama_model_n_embd_c(const XYBRID_LLAMA_MODEL* model);
+int llama_embed_c(
+    const XYBRID_LLAMA_MODEL* model,
+    const int32_t* tokens,
+    int n_tokens,
+    float* out,
+    int out_len,
+    int pooling_type);
+
 /* Chat template formatting */
 int  llama_chat_apply_template_c(
     const char* tmpl,
