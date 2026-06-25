@@ -540,6 +540,105 @@ float* llama_get_logits_c(llama_context* ctx) {
 }
 
 // =============================================================================
+// Embeddings (self-contained, embedding-mode context)
+// =============================================================================
+
+// Embedding dimensionality (n_embd) for a model. Returns < 0 on null model.
+int llama_model_n_embd_c(const llama_model* model) {
+    if (!model) {
+        return -1;
+    }
+    return llama_model_n_embd(model);
+}
+
+// Compute one pooled embedding vector for `tokens`.
+//
+// Self-contained: spins up its OWN short-lived context with embeddings enabled
+// and the requested pooling type (1=MEAN, 2=CLS, 3=LAST; anything else => MEAN),
+// runs a single decode over the sequence, copies the pooled sequence embedding
+// into `out` (caller-allocated, `out_len` floats >= n_embd), then frees the ctx.
+// Keeping it self-contained avoids threading an embedding flag through the
+// shared generation context used for autoregressive decoding.
+//
+// Returns 0 on success; negative on error:
+//   -1 null/empty args, -2 bad n_embd / out_len, -3 ctx create, -4 decode,
+//   -5 no embedding available.
+int llama_embed_c(
+    const llama_model* model,
+    const int32_t* tokens,
+    int n_tokens,
+    float* out,
+    int out_len,
+    int pooling_type
+) {
+    if (!model || !tokens || !out || n_tokens <= 0) {
+        return -1;
+    }
+
+    const int n_embd = llama_model_n_embd(model);
+    if (n_embd <= 0 || out_len < n_embd) {
+        return -2;
+    }
+
+    enum llama_pooling_type pt;
+    switch (pooling_type) {
+        case 2:  pt = LLAMA_POOLING_TYPE_CLS;  break;
+        case 3:  pt = LLAMA_POOLING_TYPE_LAST; break;
+        case 1:
+        default: pt = LLAMA_POOLING_TYPE_MEAN; break;
+    }
+
+    llama_context_params params = llama_context_default_params();
+    params.embeddings = true;
+    params.pooling_type = pt;
+    params.n_ctx = static_cast<uint32_t>(n_tokens);
+    params.n_batch = static_cast<uint32_t>(n_tokens < 512 ? 512 : n_tokens);
+    int threads = std::thread::hardware_concurrency();
+    if (threads == 0) threads = 4;
+    params.n_threads = static_cast<uint32_t>(threads);
+    params.n_threads_batch = static_cast<uint32_t>(threads);
+
+    // llama_init_from_model takes a non-const model*; embedding only reads the
+    // weights, so casting away const here is sound.
+    llama_context* ctx = llama_init_from_model(const_cast<llama_model*>(model), params);
+    if (!ctx) {
+        return -3;
+    }
+
+    // Single-sequence batch (seq id 0); request logits on the final token so
+    // LAST/NONE pooling has an output row to read.
+    llama_batch batch = llama_batch_init(n_tokens, 0, 1);
+    for (int i = 0; i < n_tokens; i++) {
+        batch.token[i]     = tokens[i];
+        batch.pos[i]       = i;
+        batch.n_seq_id[i]  = 1;
+        batch.seq_id[i][0] = 0;
+        batch.logits[i]    = static_cast<int8_t>(i == n_tokens - 1);
+    }
+    batch.n_tokens = n_tokens;
+
+    int rc = 0;
+    if (llama_decode(ctx, batch) < 0) {
+        rc = -4;
+    } else {
+        const float* emb = llama_get_embeddings_seq(ctx, 0);
+        if (!emb) {
+            // NONE pooling: fall back to the per-token row at the last position.
+            emb = llama_get_embeddings_ith(ctx, n_tokens - 1);
+        }
+        if (!emb) {
+            rc = -5;
+        } else {
+            memcpy(out, emb, sizeof(float) * static_cast<size_t>(n_embd));
+        }
+    }
+
+    llama_batch_free(batch);
+    llama_free(ctx);
+    return rc;
+}
+
+// =============================================================================
 // Chat Template
 // =============================================================================
 

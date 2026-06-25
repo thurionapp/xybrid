@@ -1025,6 +1025,25 @@ impl LlmBackend for LlamaCppBackend {
         true
     }
 
+    fn supports_embeddings(&self) -> bool {
+        true
+    }
+
+    /// Compute a pooled embedding for `text` via the loaded model.
+    ///
+    /// Does not touch the generation context or KV-cache state — the
+    /// underlying shim builds and frees its own embedding-mode context — so
+    /// it is safe to interleave with `generate*` calls without disturbing
+    /// multi-turn cache reuse.
+    fn embed(&self, text: &str, pooling: i32) -> LlmResult<Vec<f32>> {
+        let model = self.model.as_ref().ok_or_else(|| {
+            AdapterError::ModelNotLoaded("No model loaded. Call load() first.".to_string())
+        })?;
+        model
+            .embed(text, pooling)
+            .map_err(|e| AdapterError::RuntimeError(format!("embedding failed: {e}")))
+    }
+
     fn memory_usage(&self) -> Option<u64> {
         // TODO: Implement via llama_get_state_size or similar
         None

@@ -259,6 +259,31 @@ pub trait LlmBackend: Send + Sync {
         false
     }
 
+    /// Whether this backend can produce embedding vectors via [`Self::embed`].
+    ///
+    /// Defaults to `false`; embedding-capable backends override both this and
+    /// [`Self::embed`].
+    fn supports_embeddings(&self) -> bool {
+        false
+    }
+
+    /// Compute a single pooled embedding vector for `text`.
+    ///
+    /// `pooling` selects the pooling strategy (`1` MEAN, `2` CLS, `3` LAST;
+    /// other values fall back to MEAN). The returned vector length is the
+    /// model's embedding dimensionality.
+    ///
+    /// # Default Implementation
+    ///
+    /// Returns a typed unsupported-input error. Backends with an embedding
+    /// path override this.
+    fn embed(&self, _text: &str, _pooling: i32) -> LlmResult<Vec<f32>> {
+        Err(AdapterError::InvalidInput(format!(
+            "LLM backend '{}' does not support embeddings",
+            self.name()
+        )))
+    }
+
     /// Get approximate memory usage in bytes.
     fn memory_usage(&self) -> Option<u64> {
         None
