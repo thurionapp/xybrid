@@ -476,6 +476,12 @@ pub struct LlmConfig {
     /// Can provide 2-4x speedup. Default: true.
     #[serde(default = "default_flash_attn")]
     pub flash_attn: bool,
+
+    /// KV-cache dtype: `None`/`"f16"` keeps the llama.cpp default (f16);
+    /// `"q8_0"` or `"q4_0"` quantize the KV cache to cut its memory bandwidth
+    /// (helps decode mostly at long context). Default: `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kv_cache_type: Option<String>,
 }
 
 fn default_context_length() -> usize {
@@ -541,6 +547,7 @@ impl Default for LlmConfig {
             n_threads: default_n_threads(),
             n_batch: default_n_batch(),
             flash_attn: default_flash_attn(),
+            kv_cache_type: None,
         }
     }
 }
@@ -600,6 +607,24 @@ impl LlmConfig {
     pub fn with_batch_size(mut self, n_batch: usize) -> Self {
         self.n_batch = n_batch;
         self
+    }
+
+    /// Set the KV-cache dtype: `"f16"` (default), `"q8_0"` or `"q4_0"`.
+    /// Quantizing the KV cache cuts its memory bandwidth (helps decode at long context).
+    pub fn with_kv_cache_type(mut self, kv_type: impl Into<String>) -> Self {
+        self.kv_cache_type = Some(kv_type.into());
+        self
+    }
+
+    /// Resolve `kv_cache_type` to a ggml_type id for the context FFI:
+    /// `f16`→1, `q4_0`→2, `q8_0`→8; unknown/None → `0` (leave llama default).
+    pub fn kv_cache_ggml_type(&self) -> i32 {
+        match self.kv_cache_type.as_deref() {
+            Some("q4_0") => 2,
+            Some("q8_0") => 8,
+            Some("f16") => 1,
+            _ => 0,
+        }
     }
 }
 

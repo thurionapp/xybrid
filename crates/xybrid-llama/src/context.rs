@@ -28,13 +28,16 @@ impl LlamaContext {
     ///
     /// `n_threads = 0` means "auto-detect"; `n_batch = 0` means "use the
     /// 512-token llama.cpp default". `flash_attn` enables Flash Attention
-    /// (2-4× speedup on longer contexts) where supported.
+    /// (2-4× speedup on longer contexts) where supported. `kv_type` is a
+    /// ggml_type id for the KV-cache dtype (F16=1, Q4_0=2, Q8_0=8); `0`
+    /// leaves the llama.cpp default (f16).
     pub fn new(
         model: &LlamaModel,
         n_ctx: usize,
         n_threads: usize,
         n_batch: usize,
         flash_attn: bool,
+        kv_type: i32,
     ) -> LlamaResult<Self> {
         // SAFETY: model.as_ptr() is non-null (LlamaModel's ctor guarantees
         // it). Null return surfaces as ContextCreationFailed.
@@ -45,6 +48,7 @@ impl LlamaContext {
                 n_threads,
                 n_batch,
                 flash_attn,
+                kv_type,
             )
         };
         if ptr.is_null() {
