@@ -90,7 +90,7 @@ fn lfm2_350m_two_turns_does_not_fail_with_decode_error() {
          signal the prefix-reuse path keys on for INF-162-class safety"
     );
 
-    let ctx = LlamaContext::new(&model, 4096, 0, 0, false)
+    let ctx = LlamaContext::new(&model, 4096, 0, 0, false, 0)
         .expect("lfm2.5-350m context creation must succeed");
 
     // Apply chat template manually (the lfm2 GGUF embeds a chatml-like

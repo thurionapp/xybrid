@@ -737,6 +737,7 @@ impl LlmBackend for LlamaCppBackend {
             config.n_threads,
             config.n_batch,
             config.flash_attn,
+            config.kv_cache_ggml_type(),
         )
         .map_err(|e| AdapterError::RuntimeError(format!("Failed to create context: {}", e)))?;
 

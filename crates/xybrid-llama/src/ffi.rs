@@ -70,6 +70,7 @@ pub(crate) unsafe fn new_context_with_model(
     n_threads: usize,
     n_batch: usize,
     flash_attn: bool,
+    kv_type: i32,
 ) -> *mut c_void {
     sys::llama_new_context_with_model_c(
         model,
@@ -77,6 +78,7 @@ pub(crate) unsafe fn new_context_with_model(
         n_threads as c_int,
         n_batch as c_int,
         flash_attn,
+        kv_type as c_int,
     )
 }
 

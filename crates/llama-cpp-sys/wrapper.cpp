@@ -349,12 +349,20 @@ llama_context* llama_new_context_with_model_c(
     int n_ctx,
     int n_threads,
     int n_batch,
-    bool flash_attn
+    bool flash_attn,
+    int kv_type
 ) {
     llama_context_params params = llama_context_default_params();
     params.n_ctx = static_cast<uint32_t>(n_ctx);
     params.n_batch = static_cast<uint32_t>(n_batch > 0 ? n_batch : 512);
     params.flash_attn_type = flash_attn ? LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_DISABLED;
+    // KV-cache dtype: kv_type is a ggml_type id (F16=1, Q4_0=2, Q8_0=8).
+    // 0 = leave the llama.cpp default (f16). Quantizing the KV cache cuts its
+    // memory bandwidth — helps decode mostly at long context.
+    if (kv_type > 0) {
+        params.type_k = static_cast<ggml_type>(kv_type);
+        params.type_v = static_cast<ggml_type>(kv_type);
+    }
     // Use provided thread count, or fall back to hardware concurrency
     int actual_threads = n_threads > 0 ? n_threads : std::thread::hardware_concurrency();
     if (actual_threads == 0) actual_threads = 4;  // Fallback if detection fails

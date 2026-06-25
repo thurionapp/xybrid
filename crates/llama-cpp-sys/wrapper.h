@@ -70,7 +70,8 @@ XYBRID_LLAMA_CONTEXT* llama_new_context_with_model_c(
     int n_ctx,
     int n_threads,
     int n_batch,
-    bool flash_attn);
+    bool flash_attn,
+    int kv_type);
 void  llama_free_c(XYBRID_LLAMA_CONTEXT* ctx);
 void  llama_kv_cache_clear_c(XYBRID_LLAMA_CONTEXT* ctx);
 int   llama_kv_cache_seq_rm_c(XYBRID_LLAMA_CONTEXT* ctx, int seq_id, int p_keep);

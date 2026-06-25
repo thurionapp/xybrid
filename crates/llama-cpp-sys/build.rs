@@ -35,7 +35,7 @@ use std::env;
 use std::path::{Path, PathBuf};
 use std::process;
 
-const LLAMA_CPP_REPO: &str = "https://github.com/ggml-org/llama.cpp";
+const LLAMA_CPP_REPO: &str = "https://github.com/thurionapp/llama.cpp";
 // Pinned llama.cpp upstream — keep in sync with the git submodule SHA in
 // .gitmodules / `git submodule status`. The fallback clone below uses this
 // exact commit so consumers without submodule support (e.g. Flutter pub

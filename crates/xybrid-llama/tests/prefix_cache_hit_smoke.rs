@@ -101,7 +101,7 @@ fn qwen2_5_0_5b_three_turns_show_prefix_cache_hit_on_turn_2_and_3() {
          path is the relevant code path under test"
     );
 
-    let ctx = LlamaContext::new(&model, 4096, 0, 0, false)
+    let ctx = LlamaContext::new(&model, 4096, 0, 0, false, 0)
         .expect("qwen2.5-0.5b context creation must succeed");
 
     let system = "You are a concise assistant. Answer in one short sentence.";
